@@ -96,6 +96,7 @@ export const App: React.FC = () => {
   }, [lang, driveMode]);
 
   const hw = assessment?.hardware_sensor;
+  const isHwConnected = hw?.connected === true && hw?.water_raw !== null && hw?.water_raw !== undefined;
   const forecast = assessment?.forecast;
   const stage = forecast?.current_water_level_m ?? 2.40;
   const dangerDiff = (stage - 5.40).toFixed(2);
@@ -112,11 +113,15 @@ export const App: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className="text-xl font-bold tracking-tight text-stone-950">SANKET</span>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded bg-stone-100 text-stone-600 border border-stone-300">
-                  संकेत v0.7
+                  संकेत v0.8
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-                  {driveMode === 'hardware' ? 'Arduino Live Fluctuation Active' : 'Gov DHM Scrape Baseline'}
+                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                  isHwConnected
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : 'bg-stone-100 text-stone-600 border-stone-300'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isHwConnected ? 'bg-emerald-600 animate-pulse' : 'bg-stone-400'}`}></span>
+                  {isHwConnected ? `Hardware Live (${hw?.port})` : 'Gov Baseline Mode'}
                 </span>
               </div>
               <p className="text-xs text-stone-500 font-medium">
@@ -191,38 +196,49 @@ export const App: React.FC = () => {
             >
               <Cpu className="w-4 h-4" />
               Live Hardware Node (EDGE-UNO-01)
-              {hw?.connected && <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-ping" />}
+              {isHwConnected && <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-ping" />}
             </button>
           </div>
 
           <div className="flex items-center gap-2 text-xs py-2">
-            <span className="text-stone-500 font-medium">Simulation Driver:</span>
+            <span className="text-stone-500 font-medium">Model Driver:</span>
             <button
               onClick={() => setDriveMode(driveMode === 'hardware' ? 'gov_only' : 'hardware')}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded font-bold transition border ${
                 driveMode === 'hardware'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                  ? isHwConnected
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-amber-50 text-amber-800 border-amber-300'
                   : 'bg-stone-200 text-stone-700 border-stone-300'
               }`}
             >
               <Droplets className="w-3.5 h-3.5 text-emerald-600" />
-              {driveMode === 'hardware' ? 'Hardware Probe Submersion (Live)' : 'Static Gov DHM Level'}
+              {driveMode === 'hardware'
+                ? isHwConnected ? 'Hardware Submersion Mode (Active)' : 'Hardware Mode (Waiting for USB)'
+                : 'Static Gov DHM Level'}
             </button>
           </div>
         </div>
       </header>
 
-      <div className="bg-amber-50 border-b border-amber-200 py-2 px-6 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-4">
+      {/* Honest Hardware Status Banner */}
+      <div className={`border-b py-2.5 px-6 text-xs flex flex-wrap items-center justify-between gap-4 transition-colors ${
+        isHwConnected ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-stone-200/70 border-stone-300 text-stone-700'
+      }`}>
         <div className="flex items-center gap-2 font-medium">
-          <Droplets className="w-4 h-4 text-amber-700" />
+          <Droplets className={`w-4 h-4 ${isHwConnected ? 'text-emerald-700' : 'text-stone-500'}`} />
           <span>
-            <b>Hardware-in-the-Loop Mode:</b> Submerge your physical Arduino water probe into a glass of water to dynamically surge the river stage and trigger the AI!
+            {isHwConnected ? (
+              <span><b>Live Physical Probe Streaming on {hw?.port}:</b> Submerge probe in water to see river stage surge in real time!</span>
+            ) : (
+              <span><b>No Arduino USB Signal Detected:</b> Plug your Arduino UNO into USB to stream real water and DHT11 telemetry.</span>
+            )}
           </span>
         </div>
         <div className="flex items-center gap-4 font-mono font-bold">
-          <span>ADC Raw: {hw?.water_raw ?? 0} / 700</span>
-          <span>Probe: {hw?.water_level_cm?.toFixed(1) ?? '0.0'} cm</span>
-          <span className="text-stone-950 underline font-sans font-semibold">Active River Stage: {stage}m</span>
+          <span>ADC Raw: {isHwConnected ? `${hw?.water_raw} / 700` : '--'}</span>
+          <span>Probe: {isHwConnected && typeof hw?.water_level_cm === "number" ? `${hw.water_level_cm.toFixed(1)} cm` : '--'}</span>
+          <span className="underline font-sans font-semibold">River Stage: {stage}m</span>
         </div>
       </div>
 
@@ -250,7 +266,7 @@ export const App: React.FC = () => {
                   </span>
                 </div>
                 <div className="mt-2 pt-2 border-t border-stone-100 flex justify-between text-xs text-stone-600 font-medium">
-                  <span>Source: <b>{driveMode === 'hardware' ? 'Arduino Probe' : 'Gov DHM Scrape'}</b></span>
+                  <span>Source: <b>{isHwConnected ? 'Arduino Probe' : 'Gov DHM Scrape'}</b></span>
                   <span>Trend: <b>{stage >= 5.0 ? 'Rising 🔴' : 'Safe 🟢'}</b></span>
                 </div>
               </div>

@@ -16,19 +16,18 @@ class DHMScraperService:
     def scrape_real_government_reading(cls, db: Session) -> Dict[str, Any]:
         live_level = None
         source_label = "DHM_GOV_NEPAL"
-        error_note = None
 
-        # 1. Attempt primary DHM River Watch scrape
+        # 1. Primary DHM River Watch scrape
         try:
             headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SANKET-Disaster-AI"}
             res = requests.get(f"{cls.DHM_PORTAL_URL}/api/station/430/water-level", headers=headers, timeout=3.5)
             if res.status_code == 200:
                 data = res.json()
                 live_level = float(data.get("water_level_m") or data.get("level") or 0.0)
-        except Exception as e:
-            error_note = f"DHM Portal Unreachable: {e}"
+        except Exception:
+            pass
 
-        # 2. Attempt fallback to NDRRMA BIPAD government portal
+        # 2. Fallback to NDRRMA BIPAD portal
         if live_level is None or live_level <= 0.0:
             try:
                 res2 = requests.get(f"{cls.BIPAD_API_URL}?station=430", timeout=3.5)
@@ -41,10 +40,10 @@ class DHMScraperService:
             except Exception:
                 pass
 
-        # 3. If government servers are offline, set official Kusum base level
+        # 3. Baseline
         if live_level is None or live_level <= 0.0:
-            source_label = "DHM_OFFICIAL_BASELINE (Dry Season)"
-            live_level = 2.40  # Official historical base water level at Kusum
+            source_label = "DHM_OFFICIAL_BASELINE"
+            live_level = 2.40
 
         reading = RiverReading(
             station_id="DHM-430",
@@ -71,3 +70,8 @@ class DHMScraperService:
             "timestamp": reading.timestamp.isoformat(),
             "status": "LIVE_RECORDED"
         }
+
+    # Backward compatibility alias for the background thread
+    @classmethod
+    def fetch_live_dhm_reading(cls, db: Session) -> Dict[str, Any]:
+        return cls.scrape_real_government_reading(db)
