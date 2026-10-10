@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flood Alert</title>
+<style>
+  :root { --bg:#0f172a; --fg:#f8fafc; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--fg);
+         font-family: system-ui, sans-serif; display:flex; flex-direction:column;
+         align-items:center; justify-content:center; text-align:center; padding:16px; gap:14px; }
+  #status { font-size:2.2rem; font-weight:800; letter-spacing:.05em; }
+  #big { font-size:4rem; font-weight:800; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%; max-width:360px; }
+  .card { background:rgba(255,255,255,.1); border-radius:12px; padding:10px; font-size:.9rem; }
+  .card b { display:block; font-size:1.2rem; }
+  button { font-size:1.1rem; padding:14px 22px; border:0; border-radius:12px; font-weight:700; width:100%; max-width:360px; }
+  #enable { background:#2563eb; color:#fff; }
+  #mute { background:#fff; color:#111; display:none; }
+  #test { background:rgba(255,255,255,.2); color:#fff; display:none; font-size:.95rem; padding:10px; }
+  #offline { display:none; background:#000; padding:8px 12px; border-radius:8px; font-size:.9rem; }
+  body.l0 { background: #0f3d22; }
+  body.l1 { background: #7a4a05; }
+  body.l2 { animation: flash .5s steps(1) infinite; }
+  @keyframes flash { 0%{background:#7f1d1d} 50%{background:#ef4444} }
+  small { opacity:.7 }
+</style>
+</head>
+<body class="l0">
+  <div id="status">NORMAL</div>
+  <div id="big">--</div>
+  <div class="grid">
+    <div class="card">Temp<b id="t">--</b></div>
+    <div class="card">Humidity<b id="h">--</b></div>
+    <div class="card">Water (cm)<b id="cm">--</b></div>
+    <div class="card">Node<b id="node">--</b></div>
+  </div>
+  <div id="offline">Node offline: no data from sensor</div>
+  <button id="enable">Tap to enable alarm sound</button>
+  <button id="mute">Silence alarm</button>
+  <button id="test">Test alarm (6 s)</button>
+  <small id="audio">Audio: not enabled</small>
+  <small>Keep this page open, screen on, volume up.</small>
+
+<script>
+let ctx = null, osc = null, gain = null, keepAlive = null, wakeLock = null;
+let armed = false, muted = false;
+let serverLevel = 0, testUntil = 0;
+let scheduledLevel = -1, scheduledUntil = 0;
+let vibeLevel = 0, lastVibe = 0;
+
+const $ = id => document.getElementById(id);
+const effLevel = () => (Date.now() < testUntil ? 2 : serverLevel);
+
+// 1 second of silent 8-bit WAV. Played on a loop it (a) makes iOS ignore the
+// silent switch for Web Audio and (b) keeps the page counted as "playing audio",
+// which makes browsers throttle it less when backgrounded.
+function silentWavUrl() {
+  const rate = 8000, n = rate;
+  const buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); v.setUint32(4, 36 + n, true); w(8, "WAVE"); w(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate, true);
+  v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  w(36, "data"); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
+
+// Stop all scheduled sound immediately.
+function silence() {
+  if (!gain) return;
+  const t = ctx.currentTime;
+  gain.gain.cancelScheduledValues(0);
+  gain.gain.setValueAtTime(0, t);
+  osc.frequency.cancelScheduledValues(0);
+  scheduledLevel = -1;
+  scheduledUntil = 0;
+}
+
+// One long-lived oscillator; the siren pattern is scheduled on the audio clock
+// 30 s at a time, so it keeps sounding even if JS timers get throttled.
+function schedule(level) {
+  if (level !== scheduledLevel) { silence(); scheduledLevel = level; }
+  const now = ctx.currentTime;
+  if (scheduledUntil > now + 10) return;
+  const start = Math.max(now, scheduledUntil);
+  const end = start + 30;
+  if (level === 2) {
+    gain.gain.setValueAtTime(0.8, start);
+    let hi = false;
+    for (let x = start; x < end; x += 0.4) {
+      osc.frequency.setValueAtTime(hi ? 950 : 650, x);
+      hi = !hi;
+    }
+  } else if (level === 1) {
+    for (let x = start; x < end; x += 1.5) {
+      osc.frequency.setValueAtTime(700, x);
+      gain.gain.setValueAtTime(0.4, x);
+      gain.gain.setValueAtTime(0, x + 0.25);
+    }
+  }
+  scheduledUntil = end;
+}
+
+function vibe(level) {
+  if (!navigator.vibrate) return;
+  if (level === 0 || muted) {
+    if (vibeLevel) navigator.vibrate(0);
+    vibeLevel = 0;
+    return;
+  }
+  if (level === vibeLevel && Date.now() - lastVibe < 9000) return;
+  vibeLevel = level;
+  lastVibe = Date.now();
+  const unit = level === 2 ? [600, 200] : [300, 1200];
+  const pattern = [];
+  for (let i = 0; i < 12; i++) pattern.push(...unit);
+  navigator.vibrate(pattern);
+}
+
+// Called every poll (and on visibility changes): keeps audio alive and in sync.
+function driveAlarm() {
+  const level = effLevel();
+  if (level === 0 && muted) {
+    muted = false;
+    $("mute").textContent = "Silence alarm";
+  }
+  if (ctx) {
+    if (ctx.state !== "running") ctx.resume().catch(() => {});
+    $("audio").textContent = "Audio: " + ctx.state;
+  }
+  if (!armed) return;
+  if (keepAlive && keepAlive.paused) keepAlive.play().catch(() => {});
+
+  if (level === 0 || muted) {
+    if (scheduledLevel !== 0) { silence(); scheduledLevel = 0; }
+  } else {
+    schedule(level);
+  }
+  vibe(level);
+}
+
+async function lockScreen() {
+  try {
+    if ("wakeLock" in navigator && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => { wakeLock = null; });
+    }
+  } catch (e) {}
+}
+
+$("enable").onclick = () => {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  ctx.resume();                                   // inside the tap: allowed
+  keepAlive = new Audio(silentWavUrl());
+  keepAlive.loop = true;
+  keepAlive.play().catch(() => {});
+
+  osc = ctx.createOscillator();
+  osc.type = "square";
+  gain = ctx.createGain();
+  gain.gain.value = 0;
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+
+  const t = ctx.currentTime;                      // confirmation chirp
+  osc.frequency.setValueAtTime(800, t);
+  gain.gain.setValueAtTime(0.3, t);
+  gain.gain.setValueAtTime(0, t + 0.25);
+  scheduledLevel = 0;
+
+  armed = true;
+  $("enable").style.display = "none";
+  $("mute").style.display = "block";
+  $("test").style.display = "block";
+  lockScreen();
+  driveAlarm();
+};
+
+$("mute").onclick = () => {
+  muted = !muted;
+  $("mute").textContent = muted ? "Resume alarm" : "Silence alarm";
+  driveAlarm();
+};
+
+$("test").onclick = () => {
+  testUntil = Date.now() + 6000;
+  driveAlarm();
+};
+
+function render(d) {
+  $("offline").style.display = d.online ? "none" : "block";
+  if (d.online) serverLevel = d.alert_level || 0;   // keep last level if sensor drops out
+
+  const level = effLevel();
+  document.body.className = "l" + level;
+  $("status").textContent = ["NORMAL", "FLOOD WARNING", "FLOOD DANGER: EVACUATE"][level];
+  $("big").textContent = d.simulated_river_m != null ? d.simulated_river_m.toFixed(2) + " m" : "--";
+  $("t").textContent = d.temperature_c != null ? d.temperature_c.toFixed(1) + " °C" : "--";
+  $("h").textContent = d.humidity_percent != null ? d.humidity_percent.toFixed(0) + " %" : "--";
+  $("cm").textContent = d.water_level_cm != null ? d.water_level_cm.toFixed(1) : "--";
+  $("node").textContent = d.node_id || "--";
+
+  driveAlarm();
+}
+
+async function poll() {
+  try {
+    const r = await fetch("/data", { cache: "no-store" });
+    render(await r.json());
+  } catch (e) {
+    render({ online: false });
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) { lockScreen(); poll(); }
+  driveAlarm();
+});
+
+setInterval(poll, 1000);
+poll();
+</script>
+</body>
+</html>
