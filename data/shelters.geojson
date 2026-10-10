@@ -1,22 +1,65 @@
-{
+﻿{
   "type": "FeatureCollection",
   "features": [
     {
       "type": "Feature",
       "properties": {
-        "shelter_id": "SHELTER-RS-02",
-        "name": "Shree Saraswati Secondary School Evacuation Center",
+        "shelter_id": "SHELTER-01",
+        "name": "श्री सरस्वती माध्यमिक विद्यालय",
+        "name_en": "Shree Saraswati Secondary School",
         "ward": 2,
-        "municipality": "Rapti Sonari",
+        "location": "Agaiya High Ridge",
         "capacity_people": 350,
         "elevation_m": 158.4,
         "has_backup_power": true,
-        "has_drinking_water": true
+        "has_clean_water": true
       },
-      "geometry": {
-        "type": "Point",
-        "coordinates": [81.8680, 28.0050]
-      }
+      "geometry": { "type": "Point", "coordinates": [81.8680, 28.0050] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "shelter_id": "SHELTER-02",
+        "name": "कुसुम स्वास्थ्य चौकी आकस्मिक कक्ष",
+        "name_en": "Kusum Health Post Disaster Unit",
+        "ward": 2,
+        "location": "Kusum Bazaar",
+        "capacity_people": 120,
+        "elevation_m": 155.8,
+        "has_backup_power": true,
+        "has_clean_water": true
+      },
+      "geometry": { "type": "Point", "coordinates": [81.8825, 27.9940] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "shelter_id": "SHELTER-03",
+        "name": "वडा नं २ सामुदायिक भवन",
+        "name_en": "Ward 2 Community Disaster Center",
+        "ward": 2,
+        "location": "Kusum Central",
+        "capacity_people": 220,
+        "elevation_m": 156.2,
+        "has_backup_power": false,
+        "has_clean_water": true
+      },
+      "geometry": { "type": "Point", "coordinates": [81.8755, 27.9985] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "shelter_id": "SHELTER-04",
+        "name": "नेपाल रेडक्रस बाढी उद्धार केन्द्र",
+        "name_en": "Nepal Red Cross Relief Shelter",
+        "ward": 2,
+        "location": "Agaiya High Ground",
+        "capacity_people": 280,
+        "elevation_m": 159.1,
+        "has_backup_power": true,
+        "has_clean_water": true
+      },
+      "geometry": { "type": "Point", "coordinates": [81.8890, 28.0035] }
     }
   ]
 }

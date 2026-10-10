@@ -8,6 +8,8 @@ class Household(Base):
     household_id = Column(String(32), primary_key=True, index=True)
     zone = Column(String(64), nullable=False)
     ward = Column(Integer, nullable=False, index=True)
+    head_of_household = Column(String(64), nullable=False, default="गृहप्रमुख")
+    vulnerability_details = Column(String(256), nullable=True)
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
     elevation_m = Column(Float, nullable=False)
@@ -23,10 +25,8 @@ class Household(Base):
     phone_number = Column(String(20), nullable=True)
     app_registered = Column(Boolean, nullable=False, default=False)
 
-
 class RiverReading(Base):
     __tablename__ = "river_readings"
-
     id = Column(Integer, primary_key=True, autoincrement=True)
     station_id = Column(String(32), index=True, nullable=False)
     station_name = Column(String(128), nullable=False)
@@ -40,10 +40,8 @@ class RiverReading(Base):
     source = Column(String(32), nullable=False, default="DHM")
     timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
 
-
 class SensorReading(Base):
     __tablename__ = "sensor_readings"
-
     id = Column(Integer, primary_key=True, autoincrement=True)
     node_id = Column(String(32), index=True, nullable=False)
     water_level_cm = Column(Float, nullable=False)
@@ -53,10 +51,8 @@ class SensorReading(Base):
     battery_percent = Column(Float, nullable=True)
     timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
 
-
 class FloodAssessment(Base):
     __tablename__ = "flood_assessments"
-
     assessment_id = Column(String(36), primary_key=True, index=True)
     timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
     risk_level = Column(String(20), nullable=False)
@@ -65,10 +61,8 @@ class FloodAssessment(Base):
     lead_time_hours = Column(Float, nullable=True)
     details = Column(Text, nullable=True)
 
-
 class AlertTarget(Base):
     __tablename__ = "alert_targets"
-
     id = Column(Integer, primary_key=True, autoincrement=True)
     assessment_id = Column(String(36), ForeignKey("flood_assessments.assessment_id"), nullable=False)
     household_id = Column(String(32), ForeignKey("households.household_id"), nullable=False)
@@ -77,10 +71,8 @@ class AlertTarget(Base):
     queued_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     sent_at = Column(DateTime, nullable=True)
 
-
 class ResidentStatus(Base):
     __tablename__ = "resident_statuses"
-
     id = Column(Integer, primary_key=True, autoincrement=True)
     household_id = Column(String(32), ForeignKey("households.household_id"), nullable=False)
     status = Column(String(32), nullable=False)

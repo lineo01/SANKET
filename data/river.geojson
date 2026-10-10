@@ -1,24 +1,71 @@
-{
+﻿{
   "type": "FeatureCollection",
-  "name": "West Rapti River Centerline - Kusum Stretch",
+  "name": "West Rapti River System - Kusum Stretch",
   "features": [
     {
       "type": "Feature",
       "properties": {
-        "river_name": "West Rapti",
-        "basin": "West Rapti",
-        "dhm_station": "Kusum",
-        "flow_direction": "SE-to-NW"
+        "river_name": "West Rapti Main Stem (पश्चिम राप्ती नदी)",
+        "type": "main_river",
+        "dhm_station": "Kusum #430"
       },
       "geometry": {
         "type": "LineString",
         "coordinates": [
+          [81.9050, 27.9650],
           [81.8980, 27.9710],
           [81.8905, 27.9790],
           [81.8812, 27.9865],
           [81.8720, 27.9940],
           [81.8610, 28.0020],
-          [81.8502, 28.0115]
+          [81.8502, 28.0115],
+          [81.8380, 28.0210]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "river_name": "Kusum Braided Overflow Channel",
+        "type": "braided_channel"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [81.8885, 27.9825],
+          [81.8800, 27.9905],
+          [81.8695, 27.9985],
+          [81.8610, 28.0020]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "river_name": "Dudhuwa Khola (दुधुवा खोला)",
+        "type": "tributary"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [81.8820, 28.0180],
+          [81.8760, 28.0090],
+          [81.8720, 27.9940]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "river_name": "Munduwa Feeder Stream (मुन्दुवा खोल्सो)",
+        "type": "stream"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [81.8950, 27.9970],
+          [81.8875, 27.9910],
+          [81.8812, 27.9865]
         ]
       }
     }
