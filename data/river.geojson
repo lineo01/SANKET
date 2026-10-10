@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "name": "West Rapti River Centerline - Kusum Stretch",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "river_name": "West Rapti",
+        "basin": "West Rapti",
+        "dhm_station": "Kusum",
+        "flow_direction": "SE-to-NW"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [81.8980, 27.9710],
+          [81.8905, 27.9790],
+          [81.8812, 27.9865],
+          [81.8720, 27.9940],
+          [81.8610, 28.0020],
+          [81.8502, 28.0115]
+        ]
+      }
+    }
+  ]
+}

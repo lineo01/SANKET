@@ -1,0 +1,22 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "shelter_id": "SHELTER-RS-02",
+        "name": "Shree Saraswati Secondary School Evacuation Center",
+        "ward": 2,
+        "municipality": "Rapti Sonari",
+        "capacity_people": 350,
+        "elevation_m": 158.4,
+        "has_backup_power": true,
+        "has_drinking_water": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [81.8680, 28.0050]
+      }
+    }
+  ]
+}

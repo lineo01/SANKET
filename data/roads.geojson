@@ -1,0 +1,55 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ROUTE-EVAC-01",
+        "type": "evacuation_route",
+        "name": "Kusum Riverside to High Ground Ridge Road",
+        "surface": "paved",
+        "passable_for_ambulances": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [81.8790, 27.9880],
+          [81.8745, 27.9950],
+          [81.8680, 28.0050]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ROUTE-EVAC-02",
+        "type": "evacuation_route",
+        "name": "Agaiya Feeder Road to Community Shelter",
+        "surface": "gravel",
+        "passable_for_ambulances": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [81.8630, 27.9980],
+          [81.8655, 28.0015],
+          [81.8680, 28.0050]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BRIDGE-RAPTI-01",
+        "type": "bridge",
+        "name": "Agaiya-Kusum RCC Suspension Bridge",
+        "structural_status": "sound",
+        "deck_elevation_m": 159.2
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [81.8725, 27.9945]
+      }
+    }
+  ]
+}
