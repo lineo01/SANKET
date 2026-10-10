@@ -1,4 +1,338 @@
-# 🌊 Nepal Flood Watch — AI-Based Live Flood Risk Prediction
+# 🌊 Nepal Flood Watch
+
+![Python](https://img.shields.io/badge/Python-3.10+-blue)
+![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688)
+![React](https://img.shields.io/badge/Frontend-React-61DAFB)
+![ML](https://img.shields.io/badge/ML-XGBoost-orange)
+![Status](https://img.shields.io/badge/Status-Early%20Prototype-yellow)
+
+**Nepal Flood Watch** is an early-stage flood-monitoring and risk-analysis platform for Nepal. It is designed to combine live river observations, rainfall forecasts, modeled river discharge, and terrain information to help users understand current and near-future flood risk.
+
+This repository is a **working prototype**, not an operational emergency-warning system. Its current focus is on building a reliable data pipeline, API, frontend, and an experimentally validated XGBoost flood-risk model.
+
+---
+
+## ⚠️ What Is Implemented vs Planned
+
+This project intentionally separates what is working from what is planned.
+
+| Area | Status | Details |
+|---|---|---|
+| FastAPI backend | ✅ Implemented | Modular backend with API, services, data, AI, and configuration layers |
+| React frontend | ✅ Implemented | Frontend application structure with reusable components and TypeScript types |
+| Flood alert node | 🚧 In progress | `alert-server/flood_node` is intended to handle local alerting and device/server communication |
+| Open-Meteo rainfall API | ✅ Implemented / testable | Retrieves hourly rainfall, temperature, and soil-moisture data |
+| Open-Meteo Flood API | ✅ Implemented / testable | Retrieves GloFAS-based river-discharge history and forecasts |
+| DHM live river data | 🚧 In progress | DHM River Watch is the intended source for observed water level and official thresholds |
+| XGBoost risk model | 🧪 Experimental | Model design and training pipeline are under development; results depend on availability of a sufficiently long historical dataset |
+| Sentinel-1 flood mapping | 🗺️ Roadmap | Not yet part of the active pipeline |
+| NASA IMERG basin rainfall | 🗺️ Roadmap | Planned for upstream catchment rainfall estimation |
+| DEM-based catchment delineation | 🗺️ Roadmap | Planned using tools such as PyShed, WhiteboxTools, or RichDEM |
+| Hydraulic flood-depth modeling | 🗺️ Roadmap | HEC-RAS 2D or similar model would be required for actual inundation depth and spread |
+
+> **Important:** This project does not yet claim to predict exact flood depth, flood velocity over land, or the precise area that will be inundated. Those outputs require calibrated hydraulic modeling and validated historical observations.
+
+---
+
+## 🎯 Problem Statement
+
+During Nepal’s monsoon season, intense rainfall in upstream mountain and hill areas can cause river levels to rise rapidly downstream. Communities near rivers may have limited time to respond, especially when rainfall occurs far from the affected location.
+
+The goal of this project is to build a transparent decision-support tool that:
+
+- Monitors rainfall and river-related indicators
+- Combines observed and forecast data
+- Highlights stations or areas with elevated flood risk
+- Provides a foundation for future early-warning services
+
+It is designed as a **decision-support prototype**, not a replacement for official warnings from Nepal’s Department of Hydrology and Meteorology (DHM), National Disaster Risk Reduction and Management Authority (NDRRMA), or local authorities.
+
+---
+
+## 🧠 System Overview
+
+```text
+┌────────────────────────────────────────────┐
+│              External Data Sources          │
+│                                            │
+│  DHM River Watch       Open-Meteo Weather  │
+│  Open-Meteo Flood API  NASA IMERG (planned)│
+│  DEM / HydroSHEDS      Sentinel-1 (planned)│
+└───────────────────┬────────────────────────┘
+                    │
+                    ▼
+┌────────────────────────────────────────────┐
+│                Backend / FastAPI            │
+│                                            │
+│  data collection → validation → storage    │
+│  feature engineering → ML inference        │
+│  risk rules → REST API                     │
+└───────────────────┬────────────────────────┘
+                    │
+        ┌───────────┴───────────┐
+        ▼                       ▼
+┌──────────────────┐   ┌────────────────────┐
+│  React Frontend  │   │  Alert Server /     │
+│  Dashboard / UI  │   │  Flood Node         │
+└──────────────────┘   └────────────────────┘
+```
+
+---
+
+## 📡 Data Sources
+
+### Currently used or being integrated
+
+| Data | Source | Use in Project |
+|---|---|---|
+| Hourly rainfall, temperature, soil moisture | [Open-Meteo Weather API](https://open-meteo.com/en/docs) | Current and forecast weather features |
+| River discharge history and forecast | [Open-Meteo Flood API](https://open-meteo.com/en/docs/flood-api) | GloFAS-based discharge features |
+| River water level, warning and danger thresholds | [DHM River Watch](https://dhm.gov.np/hydrology/river-watch) | Intended primary observed river-level source |
+
+### Planned data sources
+
+| Data | Source | Planned Use |
+|---|---|---|
+| Basin-wide satellite rainfall | [NASA GPM IMERG](https://gpm.nasa.gov/data/imerg) | Estimate rainfall over upstream catchments |
+| Flood-extent labels | Sentinel-1 SAR / Sentinel-2 | Validate whether flooding occurred |
+| Elevation, slope, drainage area | Copernicus DEM / SRTM / HydroSHEDS | Terrain and catchment features |
+| Historical flood impacts | DesInventar Nepal, BIPAD / NDRRMA | Create historical flood-event labels |
+
+---
+
+## 🤖 Machine Learning Approach
+
+The project plans to use XGBoost for tabular flood-risk prediction. XGBoost is suitable for structured time-series features such as rainfall totals, water-level changes, discharge changes, soil moisture, and terrain attributes.
+
+### Prediction targets
+
+| Target | Model Type | Status |
+|---|---|---|
+| Future water level | XGBoost Regressor | Experimental |
+| Future discharge / flow indicator | XGBoost Regressor | Experimental |
+| Flood-risk class | XGBoost Classifier | Experimental |
+
+### Proposed risk classes
+
+| Class | Meaning |
+|---|---|
+| `normal` | No immediate concern |
+| `watch` | Rising trend or approaching warning threshold |
+| `warning` | Warning threshold reached or high forecast risk |
+| `danger` | Danger threshold reached or severe forecast risk |
+| `extreme` | Major exceedance or high-confidence extreme event signal |
+
+### Important modeling note
+
+The system will not train an XGBoost model to “predict GloFAS discharge using GloFAS discharge” as its main objective. GloFAS discharge is treated as an **external hydrological feature**, while the primary supervised targets are:
+
+1. Observed DHM water level, where historical observations are available  
+2. A risk label derived from DHM thresholds and validated historical flood events  
+
+If observed DHM history is unavailable for a pilot basin, the project will clearly state that the model is being developed using proxy data or scenario-based evaluation—not claim operational accuracy.
+
+---
+
+## 📊 Feature Engineering
+
+Planned features include:
+
+- Current water level
+- Water-level change over 1, 3, 6, 12, and 24 hours
+- Current and lagged discharge
+- Discharge change over time
+- Rainfall over 1, 3, 6, 12, 24, 48, and 72 hours
+- Forecast rainfall for 6, 12, 24, and 48 hours
+- Upstream catchment rainfall
+- Soil moisture at multiple depths
+- Month, hour, and monsoon-season indicator
+- Basin and station metadata
+- Elevation, slope, drainage area, and distance to river
+
+Rainfall will be aggregated over the upstream catchment rather than using only the rainfall at the gauge location.
+
+---
+
+## 🧪 Model Validation
+
+To avoid misleading results, the project will use time-aware validation.
+
+- Train on earlier periods
+- Validate on later periods
+- Use `TimeSeriesSplit` or event-based temporal splits
+- Avoid random row-wise splitting, which can leak future information into training
+- Evaluate separately for each forecast horizon
+- Report recall, precision, F1-score, and confusion matrix for warning-level classes
+
+For flood-warning systems, recall on `warning`, `danger`, and `extreme` classes is more important than overall accuracy. A model that misses a dangerous event is more harmful than one that occasionally gives a cautious early warning.
+
+---
+
+## 🗂️ Repository Structure
+
+```text
+.
+├── alert-server/
+│   └── flood_node/              # Local alerting / flood-node service
+│
+├── backend/
+│   ├── app/
+│   │   ├── ai/                  # ML inference and model utilities
+│   │   ├── api/                 # FastAPI routes
+│   │   ├── core/                # Configuration and core settings
+│   │   ├── data/                # Data-access and database logic
+│   │   ├── models/              # Pydantic / database models
+│   │   └── services/            # Business logic and external data services
+│   ├── tests/                   # Backend tests
+│   └── venv/                    # Local virtual environment, not committed
+│
+├── data/                        # Raw, processed, and external datasets
+├── docs/                        # Project documentation and diagrams
+├── flood-detect/                # Flood-detection experiments / components
+├── frontend/
+│   └── src/
+│       ├── components/          # Reusable React components
+│       └── types/               # TypeScript type definitions
+│
+├── .env.example
+├── requirements.txt
+└── README.md
+```
+
+> The `backend/venv/` folder should not be committed to Git. Add it to `.gitignore`.
+
+---
+
+## ⚙️ Backend Setup
+
+### 1. Clone the repository
+
+```bash
+git clone [https://github.com/your-username/nepal-flood-watch.git](https://github.com/your-username/nepal-flood-watch.git)
+cd nepal-flood-watch
+```
+
+### 2. Create and activate a virtual environment
+
+```bash
+cd backend
+python -m venv venv
+
+# Windows PowerShell
+venv\Scripts\activate
+
+# Linux / macOS
+source venv/bin/activate
+```
+
+### 3. Install backend dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure environment variables
+
+Copy `.env.example` to `.env` and update the values:
+
+```bash
+cp .env.example .env
+```
+
+Example variables:
+
+```env
+APP_ENV=development
+DATABASE_URL=sqlite:///./flood_watch.db
+OPEN_METEO_BASE_URL=[https://api.open-meteo.com/v1](https://api.open-meteo.com/v1)
+OPEN_METEO_FLOOD_BASE_URL=[https://flood-api.open-meteo.com/v1](https://flood-api.open-meteo.com/v1)
+DHM_RIVER_WATCH_URL=[https://dhm.gov.np/hydrology/river-watch](https://dhm.gov.np/hydrology/river-watch)
+```
+
+### 5. Run the FastAPI server
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+---
+
+## 🌐 Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Then open the local development URL shown by Vite, usually:
+
+```text
+http://localhost:5173
+```
+
+---
+
+## 🚀 Example API Usage
+
+### Get weather and rainfall data
+
+```text
+GET /api/weather?latitude=27.7172&longitude=85.3240
+```
+
+Example backend request to Open-Meteo:
+
+```text
+[https://api.open-meteo.com/v1/forecast?latitude=27.7172&longitude=85.3240](https://api.open-meteo.com/v1/forecast?latitude=27.7172&longitude=85.3240)
+&hourly=temperature_2m,precipitation,rain,soil_moisture_3_to_9cm
+&past_days=7&forecast_days=7&timezone=Asia%2FKathmandu
+```
+
+### Get river-discharge forecast
+
+```text
+GET /api/flood/discharge?latitude=26.8&longitude=87.0
+```
+
+Example backend request to Open-Meteo Flood API:
+
+```text
+[https://flood-api.open-meteo.com/v1/flood?latitude=26.8&longitude=87.0](https://flood-api.open-meteo.com/v1/flood?latitude=26.8&longitude=87.0)
+&daily=river_discharge,river_discharge_mean,river_discharge_max,river_discharge_min
+&past_days=30&forecast_days=30
+```
+
+The Flood API returns daily simulated river discharge in m³/s, including ensemble mean, maximum, and minimum values where requested.
+
+---
+
+## 🧪 Running Tests
+
+From the `backend/` directory:
+
+```bash
+pytest
+```
+
+Tests currently focus on backend correctness, API behavior, and data-service logic. Model evaluation notebooks and reports will be added as the ML pipeline matures.
+
+---
+
+## 📈 Current Development Focus
+
+1. Build a stable DHM ingestion and storage workflow  
+2. Create a clean station-time-series dataset  
+3. Add upstream rainfall aggregation  
+4. Implement temporal train/test splitting  
+5. Train and evaluate an initial XGBoost risk classifier  
+6. Publish honest evaluation metrics and known fai# 🌊 Nepal Flood Watch — AI-Based Live Flood Risk Prediction
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![Machine Learning](https://img.shields.io/badge/Model-XGBoost-orange)
